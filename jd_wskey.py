@@ -193,7 +193,10 @@ def getToken(wskey):
         logger.info("WSKEY转换接口出错, 请稍后尝试, 脚本退出")
         sys.exit(1)
     else:
-        return appjmp(wskey, tokenKey)
+        retCode, ck = appjmp(wskey, tokenKey)
+        if retCode == 2:
+            return getToken(wskey);
+        return retCode, ck
 
 
 # 返回值 bool jd_ck
@@ -219,14 +222,15 @@ def appjmp(wskey, tokenKey):
         wskey = wskey.split(";")[0]
         if 'fake' in pt_key:
             logger.info(str(wskey) + ";WsKey状态失效\n")
-            return False, jd_ck
+            return 0, jd_ck
         else:
             logger.info(str(wskey) + ";WsKey状态正常\n")
-            return True, jd_ck
-    except:
+            return 1, jd_ck
+    except Exception as err:
+        logger.info(str(err) + "\n未知错误, 重试脚本!")
         logger.info("JD接口转换失败, 默认WsKey失效\n")
         wskey = "pt_" + str(wskey.split(";")[0])
-        return False, wskey
+        return 2, wskey
 
 
 # 返回值 svv, stt, suid, jign
@@ -471,7 +475,6 @@ def check_cloud():
         logger.info("通知发送失败")
     sys.exit(1)
 
-
 if __name__ == '__main__':
     logger.info("\n--------------------\n")
     if "QL_PORT" in os.environ:
@@ -511,7 +514,7 @@ if __name__ == '__main__':
                 jck = str(return_serch[1])  # 拿到 JD_COOKIE
                 if not check_ck(jck):  # bool: False 判定 JD_COOKIE 有效性
                     return_ws = getToken(ws)  # 使用 WSKEY 请求获取 JD_COOKIE bool jd_ck
-                    if return_ws[0]:  # bool: True
+                    if return_ws[0] == 1:  # bool: True
                         nt_key = str(return_ws[1])
                         # logger.info("wskey转pt_key成功", nt_key)
                         logger.info("wskey转换成功")
@@ -521,14 +524,14 @@ if __name__ == '__main__':
                         # logger.info(str(wspin) + "wskey失效\n")
                         eid = return_serch[2]
                         logger.info(str(wspin) + "账号禁用")
-                        # ql_disable(eid)
+                        ql_disable(eid)
                         # dd = serch_ck(ws)[2]
                         # ql_disable(dd)
-                        text = "账号: {0} WsKey可能失效, 未禁用Cookie".format(wspin)
-                        # try:
-                            # send('WsKey转换脚本', text)
-                        # except:
-                            # logger.info("通知发送失败")
+                        text = "账号: {0} WsKey失效, 已禁用Cookie".format(wspin)
+                        try:
+                            send('WsKey转换脚本', text)
+                        except:
+                            logger.info("通知发送失败")
                 else:
                     logger.info(str(wspin) + "账号有效")
                     eid = return_serch[2]
